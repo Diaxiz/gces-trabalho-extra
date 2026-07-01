@@ -6,7 +6,7 @@ O foco da entrega e demonstrar uma arquitetura robusta para documentos com layou
 
 ## Escopo atual
 
-As fases 1 a 7 criam a estrutura inicial, documentam a arquitetura, implementam o catalogo local em SQLite, listam documentos candidatos em fontes de RI, baixam/catalogam PDFs com idempotencia por SHA-256, extraem chunks por pagina/secao e definem o contrato semantico de extracao. Ainda nao ha chamada real de LLM ou API.
+As fases 1 a 9 criam a estrutura inicial, documentam a arquitetura, implementam o catalogo local em SQLite, listam documentos candidatos em fontes de RI, baixam/catalogam PDFs com idempotencia por SHA-256, extraem chunks por pagina/secao, definem o contrato semantico, integram um cliente LLM configuravel e persistem metricas validadas com linhagem. Ainda nao ha API.
 
 Estrutura criada:
 
@@ -152,3 +152,29 @@ py -m pytest tests/test_extraction_contract.py
 ```
 
 O contrato rejeita campos extras, versao de prompt incorreta, JSON incompleto e valores numericos sem unidade/moeda. Valores ausentes devem ser representados como `null`.
+
+## Validacao da Fase 8
+
+Por padrao, `.env.example` usa `LLM_PROVIDER=mock`, entao o fluxo roda sem chave de API:
+
+```powershell
+py -m src.processing.extract --document-id 1
+```
+
+Para modo real, configure `.env` com `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` e `LLM_API_KEY`. A resposta do provedor deve ser JSON validavel por `MetricExtraction`; JSON invalido falha antes de qualquer persistencia.
+
+## Validacao da Fase 9
+
+Persistir a extracao validada no catalogo:
+
+```powershell
+py -m src.processing.extract --document-id 1 --persist
+```
+
+Consultar metricas persistidas:
+
+```powershell
+py -m src.catalog.show_metrics
+```
+
+O modo mock registra a execucao e atualiza o documento como `processed`, mas nao cria metricas reais. Com um provedor LLM real configurado, metricas validadas entram em `extracted_metrics` com `document_id`, URL/hash do PDF, pagina e trecho-fonte.
