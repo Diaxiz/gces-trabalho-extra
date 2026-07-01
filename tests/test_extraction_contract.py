@@ -82,3 +82,13 @@ def test_reject_wrong_prompt_version() -> None:
 
     with pytest.raises(ValidationError):
         validate_extraction_payload(payload)
+
+
+def test_reject_duplicate_metric_with_same_lineage() -> None:
+    payload = valid_payload()
+    metric = payload["metrics"][0]
+    assert isinstance(metric, dict)
+    payload["metrics"] = [metric, metric.copy()]
+
+    with pytest.raises(ValidationError):
+        validate_extraction_payload(payload)

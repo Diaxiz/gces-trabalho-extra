@@ -100,6 +100,10 @@ def existing_document_for_url(session: Session, candidate: DocumentCandidate) ->
     return session.scalar(select(Document).where(Document.pdf_url == candidate.url))
 
 
+def existing_document_for_sha256(session: Session, sha256: str) -> Document | None:
+    return session.scalar(select(Document).where(Document.sha256 == sha256))
+
+
 def catalog_document(
     session: Session,
     candidate: DocumentCandidate,
@@ -145,6 +149,16 @@ def ingest_candidate(
 
     content = download_document(candidate, client)
     sha256 = calculate_sha256(content)
+    existing_by_hash = existing_document_for_sha256(session, sha256)
+    if existing_by_hash is not None:
+        return IngestionResult(
+            candidate=candidate,
+            status="skipped_duplicate",
+            sha256=existing_by_hash.sha256,
+            local_path=resolve_catalog_path(existing_by_hash.local_path),
+            document_id=existing_by_hash.id,
+        )
+
     raw_dir.mkdir(parents=True, exist_ok=True)
     local_path = raw_dir / filename_for_candidate(candidate, sha256)
 

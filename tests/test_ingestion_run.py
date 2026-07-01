@@ -53,3 +53,52 @@ def test_ingest_candidate_skips_duplicate_hash(tmp_path: Path) -> None:
         assert len(session.scalars(select(Document)).all()) == 1
 
     Base.metadata.drop_all(bind=engine)
+
+
+def test_ingest_candidate_skips_duplicate_hash_from_different_url(tmp_path: Path) -> None:
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(bind=engine)
+    session_factory = sessionmaker(bind=engine)
+    pdf_content = b"%PDF-1.4 same content from another url"
+    request_count = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(200, content=pdf_content)
+
+    first_candidate = DocumentCandidate(
+        company="Direcional",
+        ticker="DIRR3",
+        title="Previa Operacional 1T26",
+        url="https://example.com/previa-a.pdf",
+        source_url="https://ri.example.com/central-de-resultados",
+        year=2026,
+        quarter=1,
+        matched_terms=("previa operacional",),
+    )
+    second_candidate = DocumentCandidate(
+        company="Direcional",
+        ticker="DIRR3",
+        title="Previa Operacional 1T26 copia",
+        url="https://mirror.example.com/previa-b.pdf",
+        source_url="https://ri.example.com/central-de-resultados",
+        year=2026,
+        quarter=1,
+        matched_terms=("previa operacional",),
+    )
+
+    with session_factory() as session, httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        first = ingest_candidate(first_candidate, session, client, raw_dir=tmp_path)
+        second = ingest_candidate(second_candidate, session, client, raw_dir=tmp_path)
+
+        assert first.status == "downloaded"
+        assert second.status == "skipped_duplicate"
+        assert first.sha256 == second.sha256
+        assert first.document_id == second.document_id
+        assert first.local_path == second.local_path
+        assert request_count == 2
+        assert len(session.scalars(select(Document)).all()) == 1
+        assert len(list(tmp_path.glob("*.pdf"))) == 1
+
+    Base.metadata.drop_all(bind=engine)

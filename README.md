@@ -1,14 +1,50 @@
 # Projeto Individual 4 - Pipeline UDA para PDFs de RI
 
-Este projeto implementara, em fases, um pipeline de UDA (Unstructured Data Analysis) para coletar, catalogar, processar e servir dados estruturados extraidos de PDFs de Relacoes com Investidores de incorporadoras/construtoras.
+Pipeline de UDA (Unstructured Data Analysis) para coletar, catalogar, processar
+e servir dados estruturados extraidos de PDFs de Relacoes com Investidores de
+incorporadoras/construtoras.
 
-O foco da entrega e demonstrar uma arquitetura robusta para documentos com layouts variados, mantendo idempotencia por hash, contrato semantico para a extracao por LLM, catalogo com linhagem e API REST para consulta dos dados.
+O projeto prioriza arquitetura, idempotencia, contrato semantico, linhagem e API.
+Nao ha foco em interface grafica.
 
-## Escopo atual
+## O Que Este Projeto Entrega
 
-As fases 1 a 9 criam a estrutura inicial, documentam a arquitetura, implementam o catalogo local em SQLite, listam documentos candidatos em fontes de RI, baixam/catalogam PDFs com idempotencia por SHA-256, extraem chunks por pagina/secao, definem o contrato semantico, integram um cliente LLM configuravel e persistem metricas validadas com linhagem. Ainda nao ha API.
+- Descoberta leve de PDFs em paginas de RI.
+- Download e catalogacao local com SHA-256.
+- Idempotencia: o mesmo PDF nao e processado duas vezes.
+- Parsing com PyMuPDF e chunking por pagina/secao.
+- Filtro de chunks candidatos por termos de negocio.
+- Contrato Pydantic para validar respostas de LLM.
+- Prompt versionado em `src/prompts/extraction_v1.md`.
+- Cliente LLM configuravel, com modo `mock` para testes sem chave.
+- Persistencia de runs e metricas validadas com linhagem.
+- API FastAPI com filtros por empresa, ano e trimestre.
+- Testes automatizados para idempotencia, contrato e API.
 
-Estrutura criada:
+## Arquitetura Resumida
+
+```text
+Fontes RI
+  -> descoberta de candidatos
+  -> download do PDF
+  -> SHA-256 e catalogo SQLite
+  -> parsing PyMuPDF
+  -> chunks candidatos
+  -> LLM configuravel
+  -> contrato Pydantic
+  -> metricas com linhagem
+  -> API FastAPI
+```
+
+Camadas obrigatorias:
+
+1. Extracao de dados: descoberta, download, hash e parsing/chunking.
+2. Contrato semantico: schemas Pydantic e prompt versionado.
+3. Catalogo, linhagem e API: SQLite, runs, metricas e endpoints REST.
+
+Detalhes de arquitetura estao em `docs/arquitetura.md`.
+
+## Estrutura
 
 ```text
 .
@@ -16,34 +52,27 @@ Estrutura criada:
 |   |-- processed/
 |   `-- raw/
 |-- docs/
+|   |-- arquitetura.md
+|   `-- evidencias.md
 |-- src/
+|   |-- api/
+|   |-- catalog/
+|   |-- contracts/
+|   |-- ingestion/
+|   |-- llm/
+|   |-- processing/
+|   `-- prompts/
 |-- tests/
 |-- .env.example
-|-- .gitignore
 |-- pyproject.toml
 `-- README.md
 ```
 
-## Stack planejada
+## Instalacao
 
-- Python 3.11+
-- FastAPI para a API REST
-- SQLite e SQLAlchemy para catalogo local e linhagem
-- httpx e BeautifulSoup para descoberta leve de PDFs
-- PyMuPDF para parsing de PDFs
-- Pydantic para contrato semantico
-- Cliente LLM configuravel por variavel de ambiente
-- pytest para testes automatizados
+Python recomendado: 3.11+.
 
-## Camadas previstas
-
-1. Ingestao de dados: descoberta de PDFs em paginas de RI, download, hash SHA-256 e controle de duplicidade.
-2. Processamento UDA: parsing/chunking de PDFs e extracao semantica por LLM com saida estruturada.
-3. Servico/API: endpoints REST para consultar metricas por empresa, ano e trimestre, preservando linhagem.
-
-## Configuracao inicial
-
-Crie um ambiente virtual e instale as dependencias:
+Linux/macOS:
 
 ```bash
 python -m venv .venv
@@ -51,121 +80,77 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-No Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
-python -m venv .venv
+py -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
+py -m pip install -e ".[dev]"
 ```
 
-Copie `.env.example` para `.env` quando as proximas fases precisarem de configuracao local. O arquivo `.env` real nao deve ser versionado.
+Copie `.env.example` para `.env` se for configurar variaveis locais. O arquivo
+`.env` real nao deve ser versionado.
 
-## Validacao da Fase 1
+## Variaveis De Ambiente
 
-```bash
-python --version
+Padrao seguro para rodar sem chave externa:
+
+```text
+APP_ENV=development
+DATABASE_URL=sqlite:///data/processed/catalog.db
+LLM_PROVIDER=mock
+LLM_MODEL=gpt-4.1-mini
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_API_KEY=
+INGESTION_INTERVAL_HOURS=24
 ```
 
-Tambem confira se as pastas `src/`, `tests/`, `data/raw/`, `data/processed/` e `docs/` existem.
+Para LLM real, configure `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` e
+`LLM_API_KEY`.
 
-## Validacao da Fase 3
+## Como Rodar
 
-Inicialize o catalogo local:
-
-```bash
-python -m src.db
-```
-
-No Windows, se `python` apontar para o atalho da Microsoft Store, use:
+Inicializar banco:
 
 ```powershell
 py -m src.db
 ```
 
-Execute os testes:
-
-```bash
-pytest
-```
-
-## Validacao da Fase 4
-
-Liste candidatos descobertos nas fontes cadastradas:
-
-```bash
-python -m src.ingestion.discover
-```
-
-No Windows, se necessario:
+Descobrir candidatos:
 
 ```powershell
 py -m src.ingestion.discover
 ```
 
-Para saida estruturada em JSON:
-
-```powershell
-py -m src.ingestion.discover --json
-```
-
-## Validacao da Fase 5
-
-Baixe e catalogue os documentos descobertos:
+Baixar e catalogar PDFs:
 
 ```powershell
 py -m src.ingestion.run
 ```
 
-Para demonstrar idempotencia, rode o mesmo comando duas vezes. Na segunda execucao, documentos ja registrados pelo mesmo SHA-256 devem aparecer com status `skipped_duplicate`.
-
-Durante testes rapidos, limite a quantidade de downloads:
+Demonstrar idempotencia:
 
 ```powershell
-py -m src.ingestion.run --limit 2
+py -m src.ingestion.run
+py -m src.ingestion.run
 ```
 
-## Validacao da Fase 6
+Na segunda execucao, documentos ja catalogados aparecem como
+`skipped_duplicate`.
 
-Extraia texto dos PDFs catalogados e gere chunks em `data/processed/`:
+Extrair chunks dos PDFs:
 
 ```powershell
 py -m src.processing.parse_pdf
 ```
 
-Para processar apenas um documento:
-
-```powershell
-py -m src.processing.parse_pdf --document-id 1
-```
-
-Os arquivos gerados seguem o formato `document_<id>_<sha>_chunks.jsonl` e incluem pagina, texto, tamanho aproximado, termos candidatos e metadados de linhagem do documento.
-
-## Validacao da Fase 7
-
-O contrato semantico fica em `src/contracts/extraction.py` e o prompt versionado em `src/prompts/extraction_v1.md`.
-
-Execute:
-
-```powershell
-py -m pytest tests/test_extraction_contract.py
-```
-
-O contrato rejeita campos extras, versao de prompt incorreta, JSON incompleto e valores numericos sem unidade/moeda. Valores ausentes devem ser representados como `null`.
-
-## Validacao da Fase 8
-
-Por padrao, `.env.example` usa `LLM_PROVIDER=mock`, entao o fluxo roda sem chave de API:
+Executar extracao semantica em modo mock:
 
 ```powershell
 py -m src.processing.extract --document-id 1
 ```
 
-Para modo real, configure `.env` com `LLM_PROVIDER`, `LLM_MODEL`, `LLM_BASE_URL` e `LLM_API_KEY`. A resposta do provedor deve ser JSON validavel por `MetricExtraction`; JSON invalido falha antes de qualquer persistencia.
-
-## Validacao da Fase 9
-
-Persistir a extracao validada no catalogo:
+Persistir uma run validada:
 
 ```powershell
 py -m src.processing.extract --document-id 1 --persist
@@ -177,4 +162,91 @@ Consultar metricas persistidas:
 py -m src.catalog.show_metrics
 ```
 
-O modo mock registra a execucao e atualiza o documento como `processed`, mas nao cria metricas reais. Com um provedor LLM real configurado, metricas validadas entram em `extracted_metrics` com `document_id`, URL/hash do PDF, pagina e trecho-fonte.
+Rodar testes:
+
+```powershell
+py -m pytest
+```
+
+## API
+
+Subir servidor:
+
+```powershell
+py -m uvicorn src.api.main:app --reload
+```
+
+Endpoints:
+
+```text
+GET /health
+GET /api/empresas
+GET /api/documentos
+GET /api/metricas
+GET /api/conjuntura?empresa=Direcional&ano=2026&trimestre=1
+```
+
+Exemplo de resposta de `/api/conjuntura` quando ha metrica persistida:
+
+```json
+{
+  "filters": {
+    "empresa": "Direcional",
+    "ano": 2026,
+    "trimestre": 1
+  },
+  "count": 1,
+  "metrics": [
+    {
+      "id": 1,
+      "company": "Direcional",
+      "metric_name": "vgv lancado",
+      "period_year": 2026,
+      "period_quarter": 1,
+      "value": 1005.8,
+      "unit": "R$ milhoes",
+      "currency": "BRL",
+      "page_number": 2,
+      "source_excerpt": "VGV Lancado (VGV 100%) 1.005,8",
+      "confidence": 0.92,
+      "document": {
+        "id": 1,
+        "title": "Previa Operacional",
+        "pdf_url": "https://example.com/previa.pdf",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "year": 2026,
+        "quarter": 1,
+        "status": "processed"
+      }
+    }
+  ]
+}
+```
+
+No banco local atual, o modo `mock` registra a execucao mas nao gera metricas
+reais. Com LLM real configurado, metricas validadas entram em
+`extracted_metrics` e aparecem nesses endpoints.
+
+## Evidencias
+
+Evidencias de documentos, layouts, chunks e linhagem estao em
+`docs/evidencias.md`.
+
+Resumo local ja validado:
+
+- 3 empresas/fonte no catalogo.
+- 5 documentos catalogados.
+- 5 arquivos de chunks gerados.
+- 1 run de extracao mock registrada.
+- 31 testes automatizados passando.
+
+## Pontos De Avaliacao Cobertos
+
+- Ingestao automatizavel por comando agendavel.
+- Idempotencia por SHA-256 antes de custo de LLM.
+- Chunking sem coordenadas fixas de PDF.
+- Contrato Pydantic com `null` para ausentes.
+- Prompt exigindo valores absolutos e ignorando percentuais de marketing quando
+  nao forem a metrica principal.
+- Linhagem por documento, URL, SHA-256, pagina e trecho-fonte.
+- API filtravel por empresa, ano e trimestre.
