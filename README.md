@@ -4,9 +4,9 @@ Este projeto implementara, em fases, um pipeline de UDA (Unstructured Data Analy
 
 O foco da entrega e demonstrar uma arquitetura robusta para documentos com layouts variados, mantendo idempotencia por hash, contrato semantico para a extracao por LLM, catalogo com linhagem e API REST para consulta dos dados.
 
-## Escopo da Fase 1
+## Escopo atual
 
-Esta primeira fase cria apenas a estrutura inicial do projeto Python. Ainda nao ha implementacao de crawler, banco de dados, LLM ou API.
+As fases 1, 2 e 3 criam a estrutura inicial, documentam a arquitetura e implementam o catalogo local em SQLite. Ainda nao ha implementacao de crawler, LLM ou API.
 
 Estrutura criada:
 
@@ -68,3 +68,23 @@ python --version
 ```
 
 Tambem confira se as pastas `src/`, `tests/`, `data/raw/`, `data/processed/` e `docs/` existem.
+
+## Validacao da Fase 3
+
+Inicialize o catalogo local:
+
+```bash
+python -m src.db
+```
+
+No Windows, se `python` apontar para o atalho da Microsoft Store, use:
+
+```powershell
+py -m src.db
+```
+
+Execute os testes:
+
+```bash
+pytest
+```
