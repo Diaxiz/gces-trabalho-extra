@@ -232,6 +232,8 @@ reais. Com LLM real configurado, metricas validadas entram em
 Evidencias de documentos, layouts, chunks e linhagem estao em
 `docs/evidencias.md`.
 
+Checklist final e texto sugerido de Pull Request estao em `docs/submissao.md`.
+
 Resumo local ja validado:
 
 - 3 empresas/fonte no catalogo.
