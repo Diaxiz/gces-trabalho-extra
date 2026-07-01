@@ -6,7 +6,7 @@ O foco da entrega e demonstrar uma arquitetura robusta para documentos com layou
 
 ## Escopo atual
 
-As fases 1, 2, 3, 4 e 5 criam a estrutura inicial, documentam a arquitetura, implementam o catalogo local em SQLite, listam documentos candidatos em fontes de RI e baixam/catalogam PDFs com idempotencia por SHA-256. Ainda nao ha parsing, LLM ou API.
+As fases 1 a 7 criam a estrutura inicial, documentam a arquitetura, implementam o catalogo local em SQLite, listam documentos candidatos em fontes de RI, baixam/catalogam PDFs com idempotencia por SHA-256, extraem chunks por pagina/secao e definem o contrato semantico de extracao. Ainda nao ha chamada real de LLM ou API.
 
 Estrutura criada:
 
@@ -124,3 +124,31 @@ Durante testes rapidos, limite a quantidade de downloads:
 ```powershell
 py -m src.ingestion.run --limit 2
 ```
+
+## Validacao da Fase 6
+
+Extraia texto dos PDFs catalogados e gere chunks em `data/processed/`:
+
+```powershell
+py -m src.processing.parse_pdf
+```
+
+Para processar apenas um documento:
+
+```powershell
+py -m src.processing.parse_pdf --document-id 1
+```
+
+Os arquivos gerados seguem o formato `document_<id>_<sha>_chunks.jsonl` e incluem pagina, texto, tamanho aproximado, termos candidatos e metadados de linhagem do documento.
+
+## Validacao da Fase 7
+
+O contrato semantico fica em `src/contracts/extraction.py` e o prompt versionado em `src/prompts/extraction_v1.md`.
+
+Execute:
+
+```powershell
+py -m pytest tests/test_extraction_contract.py
+```
+
+O contrato rejeita campos extras, versao de prompt incorreta, JSON incompleto e valores numericos sem unidade/moeda. Valores ausentes devem ser representados como `null`.
