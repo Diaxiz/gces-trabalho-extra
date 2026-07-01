@@ -12,16 +12,16 @@ Estrutura criada:
 
 ```text
 .
-├── data/
-│   ├── processed/
-│   └── raw/
-├── docs/
-├── src/
-├── tests/
-├── .env.example
-├── .gitignore
-├── pyproject.toml
-└── README.md
+|-- data/
+|   |-- processed/
+|   `-- raw/
+|-- docs/
+|-- src/
+|-- tests/
+|-- .env.example
+|-- .gitignore
+|-- pyproject.toml
+`-- README.md
 ```
 
 ## Stack planejada
