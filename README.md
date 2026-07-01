@@ -6,7 +6,7 @@ O foco da entrega e demonstrar uma arquitetura robusta para documentos com layou
 
 ## Escopo atual
 
-As fases 1, 2 e 3 criam a estrutura inicial, documentam a arquitetura e implementam o catalogo local em SQLite. Ainda nao ha implementacao de crawler, LLM ou API.
+As fases 1, 2, 3, 4 e 5 criam a estrutura inicial, documentam a arquitetura, implementam o catalogo local em SQLite, listam documentos candidatos em fontes de RI e baixam/catalogam PDFs com idempotencia por SHA-256. Ainda nao ha parsing, LLM ou API.
 
 Estrutura criada:
 
@@ -87,4 +87,40 @@ Execute os testes:
 
 ```bash
 pytest
+```
+
+## Validacao da Fase 4
+
+Liste candidatos descobertos nas fontes cadastradas:
+
+```bash
+python -m src.ingestion.discover
+```
+
+No Windows, se necessario:
+
+```powershell
+py -m src.ingestion.discover
+```
+
+Para saida estruturada em JSON:
+
+```powershell
+py -m src.ingestion.discover --json
+```
+
+## Validacao da Fase 5
+
+Baixe e catalogue os documentos descobertos:
+
+```powershell
+py -m src.ingestion.run
+```
+
+Para demonstrar idempotencia, rode o mesmo comando duas vezes. Na segunda execucao, documentos ja registrados pelo mesmo SHA-256 devem aparecer com status `skipped_duplicate`.
+
+Durante testes rapidos, limite a quantidade de downloads:
+
+```powershell
+py -m src.ingestion.run --limit 2
 ```
